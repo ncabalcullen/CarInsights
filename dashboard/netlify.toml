@@ -1,0 +1,17 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# Next.js necesita estas redirecciones para funcionar correctamente
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Configuración para Next.js en Netlify
+[functions]
+  node_bundler = "esbuild"
+
