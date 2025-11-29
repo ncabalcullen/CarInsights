@@ -28,7 +28,7 @@ interface MercadoLibreResponse {
 function transformMercadoLibreData(items: MercadoLibreItem[]) {
   return items.map((item) => {
     const attributesMap: Record<string, any> = {};
-    
+
     item.attributes.forEach((attr) => {
       if (attr.value_name !== null && attr.value_name !== undefined && attr.value_name !== '') {
         attributesMap[attr.id] = attr.value_name;
@@ -49,11 +49,11 @@ function transformMercadoLibreData(items: MercadoLibreItem[]) {
 
     // Extraer información común de vehículos - buscar por múltiples posibles IDs y nombres
     // MercadoLibre usa diferentes IDs según la categoría, así que buscamos por múltiples variantes
-    
+
     // Lista extensa de marcas comunes en Argentina
     const commonBrands = [
-      'Ford', 'Chevrolet', 'Volkswagen', 'Fiat', 'Renault', 'Peugeot', 'Toyota', 'Honda', 
-      'Nissan', 'BMW', 'Mercedes', 'Mercedes-Benz', 'Audi', 'Hyundai', 'Kia', 'Mazda', 
+      'Ford', 'Chevrolet', 'Volkswagen', 'Fiat', 'Renault', 'Peugeot', 'Toyota', 'Honda',
+      'Nissan', 'BMW', 'Mercedes', 'Mercedes-Benz', 'Audi', 'Hyundai', 'Kia', 'Mazda',
       'Suzuki', 'Jeep', 'Dodge', 'Ram', 'Citroën', 'Citroen', 'Opel', 'Seat', 'Skoda',
       'Volvo', 'Land Rover', 'Range Rover', 'Jaguar', 'Porsche', 'Mini', 'Smart',
       'Alfa Romeo', 'Ferrari', 'Lamborghini', 'Maserati', 'Bentley', 'Rolls-Royce',
@@ -63,7 +63,7 @@ function transformMercadoLibreData(items: MercadoLibreItem[]) {
       'Abarth', 'Alpine', 'Aston Martin', 'Bentley', 'Bugatti', 'Cadillac', 'Chrysler',
       'DS', 'Genesis', 'Infiniti', 'Lexus', 'Lincoln', 'McLaren', 'Tesla'
     ];
-    
+
     // Buscar marca en atributos primero
     let brand = findAttribute([
       'BRAND', 'Marca', 'VEHICLE_BRAND', 'VEHÍCULO_MARCA',
@@ -71,7 +71,7 @@ function transformMercadoLibreData(items: MercadoLibreItem[]) {
       // IDs específicos de MercadoLibre para vehículos
       'BRAND', 'VEHICLE_BRAND', 'VEHICLE_BRAND_ID'
     ]);
-    
+
     // Si no se encontró en atributos, buscar en el título
     if (!brand || brand === 'null' || brand === '') {
       const titleMatch = item.title.match(new RegExp(`\\b(${commonBrands.join('|')})\\b`, 'i'));
@@ -79,7 +79,7 @@ function transformMercadoLibreData(items: MercadoLibreItem[]) {
         brand = titleMatch[0];
       }
     }
-    
+
     // Normalizar marca (capitalizar primera letra)
     if (brand && brand !== 'null' && brand !== '') {
       brand = String(brand).charAt(0).toUpperCase() + String(brand).slice(1).toLowerCase();
@@ -89,35 +89,35 @@ function transformMercadoLibreData(items: MercadoLibreItem[]) {
     } else {
       brand = 'Unknown';
     }
-    
+
     const model = findAttribute([
       'MODEL', 'Modelo', 'VEHICLE_MODEL', 'VEHÍCULO_MODELO',
       'MODEL_ID', 'MODELO_ID', 'vehicle_model', 'modelo'
     ]) || 'Unknown';
-    
+
     const year = findAttribute([
       'YEAR', 'Año', 'Model year', 'VEHICLE_YEAR', 'VEHÍCULO_AÑO',
       'YEAR_ID', 'AÑO_ID', 'vehicle_year', 'año', 'AÑO'
-    ]) || 
-    (item.title.match(/\b(19|20)\d{2}\b/)?.[0]) ||
-    null;
-    
+    ]) ||
+      (item.title.match(/\b(19|20)\d{2}\b/)?.[0]) ||
+      null;
+
     const kilometersStr = findAttribute([
       'KILOMETERS', 'Kilómetros', 'Kilometers', 'VEHICLE_KILOMETERS',
       'KILOMETERS_ID', 'KILÓMETROS_ID', 'vehicle_kilometers', 'kilómetros', 'kilometers'
     ]);
-    const kilometers = kilometersStr 
+    const kilometers = kilometersStr
       ? parseInt(String(kilometersStr).replace(/[^\d]/g, '')) || 0
-      : (item.title.match(/(\d{1,3}(?:\.\d{3})*)\s*k?m/i)?.[1]?.replace(/\./g, '') || 
-         item.title.match(/(\d+)\s*k?m/i)?.[1]) 
-        ? parseInt(item.title.match(/(\d+)\s*k?m/i)?.[1] || '0') 
+      : (item.title.match(/(\d{1,3}(?:\.\d{3})*)\s*k?m/i)?.[1]?.replace(/\./g, '') ||
+        item.title.match(/(\d+)\s*k?m/i)?.[1])
+        ? parseInt(item.title.match(/(\d+)\s*k?m/i)?.[1] || '0')
         : 0;
-    
+
     const fuelType = findAttribute([
       'FUEL_TYPE', 'Tipo de combustible', 'VEHICLE_FUEL_TYPE',
       'FUEL_TYPE_ID', 'TIPO_COMBUSTIBLE_ID', 'vehicle_fuel_type', 'tipo de combustible'
     ]) || 'Unknown';
-    
+
     const transmission = findAttribute([
       'TRANSMISSION', 'Transmisión', 'VEHICLE_TRANSMISSION',
       'TRANSMISSION_ID', 'TRANSMISIÓN_ID', 'vehicle_transmission', 'transmisión'
@@ -144,19 +144,24 @@ function transformMercadoLibreData(items: MercadoLibreItem[]) {
 }
 
 // Función para cargar datos locales como fallback
-async function loadLocalData() {
+async function loadLocalData(baseUrl?: string) {
   try {
     // En Next.js, los archivos públicos se sirven desde /public
     // Intentar cargar desde la URL pública
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const response = await fetch(`${baseUrl}/data/vehicles.json`, {
+    const url = baseUrl || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    // Asegurar que la URL sea absoluta si es posible
+    const fetchUrl = url.startsWith('http') ? `${url}/data/vehicles.json` : `http://${url}/data/vehicles.json`;
+
+    console.log(`Attempting to load local data from: ${fetchUrl}`);
+
+    const response = await fetch(fetchUrl, {
       cache: 'no-store',
     });
-    
+
     if (response.ok) {
       return await response.json();
     }
-    
+
     // Fallback: intentar leer desde el filesystem (solo funciona en servidor)
     try {
       const fs = require('fs');
@@ -174,9 +179,51 @@ async function loadLocalData() {
   }
 }
 
+// Función para obtener Access Token (ya sea de env o generándolo)
+async function getAccessToken(): Promise<string | null> {
+  // 1. Si ya está en variables de entorno, usarlo
+  if (process.env.MERCADOLIBRE_ACCESS_TOKEN) {
+    return process.env.MERCADOLIBRE_ACCESS_TOKEN;
+  }
+
+  // 2. Si no, intentar generarlo con Client Credentials
+  const clientId = process.env.MERCADOLIBRE_CLIENT_ID;
+  const clientSecret = process.env.MERCADOLIBRE_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    return null;
+  }
+
+  try {
+    const response = await fetch('https://api.mercadolibre.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: clientId,
+        client_secret: clientSecret,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('Failed to generate access token:', await response.text());
+      return null;
+    }
+
+    const data = await response.json();
+    return data.access_token;
+  } catch (error) {
+    console.error('Error generating access token:', error);
+    return null;
+  }
+}
+
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams, origin } = new URL(request.url);
     const query = searchParams.get('q') || 'vehiculos';
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
@@ -185,7 +232,7 @@ export async function GET(request: Request) {
 
     // Si se solicita explícitamente datos locales, usarlos
     if (useLocal) {
-      const localData = await loadLocalData();
+      const localData = await loadLocalData(origin);
       return NextResponse.json({
         data: localData.slice(offset, offset + limit),
         paging: {
@@ -197,15 +244,19 @@ export async function GET(request: Request) {
       });
     }
 
-    // Verificar si hay credenciales configuradas
-    const hasCredentials = !!process.env.MERCADOLIBRE_ACCESS_TOKEN || 
-                          (!!process.env.MERCADOLIBRE_CLIENT_ID && !!process.env.MERCADOLIBRE_CLIENT_SECRET);
-    
+    // Obtener token (automático o manual)
+    const accessToken = await getAccessToken();
+
+    // Verificar si tenemos alguna forma de autenticación (Token o ID/Secret que generó el token)
+    // O si falló la generación, al menos intentar sin token (aunque ML suele requerirlo para rate limits altos)
+    const hasCredentials = !!accessToken ||
+      (!!process.env.MERCADOLIBRE_CLIENT_ID && !!process.env.MERCADOLIBRE_CLIENT_SECRET);
+
     if (!hasCredentials) {
       // Sin credenciales, es muy probable que reciba 403
       // Usar datos locales directamente y mostrar mensaje claro
       console.warn('No API credentials configured. Using local data. See GUIA-API-MERCADOLIBRE.md for setup instructions.');
-      const localData = await loadLocalData();
+      const localData = await loadLocalData(origin);
       return NextResponse.json({
         data: localData.slice(offset, offset + limit),
         paging: {
@@ -228,7 +279,7 @@ export async function GET(request: Request) {
     for (let i = 0; i < totalRequests && allResults.length < limit; i++) {
       const currentOffset = offset + (i * maxPerRequest);
       const currentLimit = Math.min(maxPerRequest, limit - allResults.length);
-      
+
       // Intentar diferentes formatos de URL
       const mlApiUrl = `https://api.mercadolibre.com/sites/MLA/search?category=${category}&q=${encodeURIComponent(query)}&limit=${currentLimit}&offset=${currentOffset}`;
 
@@ -238,14 +289,13 @@ export async function GET(request: Request) {
         'Accept': 'application/json',
       };
 
-      // Si hay un access token configurado, usarlo (opcional)
-      const accessToken = process.env.MERCADOLIBRE_ACCESS_TOKEN;
+      // Si hay un access token, usarlo
       if (accessToken) {
         headers['Authorization'] = `Bearer ${accessToken}`;
       }
 
       try {
-        const response = await fetch(mlApiUrl, { 
+        const response = await fetch(mlApiUrl, {
           headers,
           // Agregar timeout
           signal: AbortSignal.timeout(10000), // 10 segundos
@@ -257,16 +307,16 @@ export async function GET(request: Request) {
           // Intentar esperar un poco y reintentar, o usar datos locales
           if (i === 0) {
             console.warn('MercadoLibre API returned 403 (Forbidden). This may be temporary. Trying with delay...');
-            
+
             // Esperar 1 segundo y reintentar una vez
             await new Promise(resolve => setTimeout(resolve, 1000));
-            
+
             try {
               const retryResponse = await fetch(mlApiUrl, {
                 headers,
                 signal: AbortSignal.timeout(10000),
               });
-              
+
               if (retryResponse.ok) {
                 const retryData: MercadoLibreResponse = await retryResponse.json();
                 allResults.push(...retryData.results);
@@ -275,11 +325,11 @@ export async function GET(request: Request) {
             } catch (retryError) {
               console.warn('Retry also failed:', retryError);
             }
-            
+
             // Si todo falla después del retry, intentar usar datos locales
             // pero solo si realmente no hay otra opción
             console.warn('API unavailable. You may need to configure credentials. Using local data as fallback.');
-            const localData = await loadLocalData();
+            const localData = await loadLocalData(origin);
             if (localData.length > 0) {
               return NextResponse.json({
                 data: localData.slice(offset, offset + limit),
@@ -300,7 +350,7 @@ export async function GET(request: Request) {
           // Si es el primer request y falla, usar datos locales
           if (i === 0) {
             console.warn('MercadoLibre API returned 429 (Too Many Requests). Rate limit exceeded. Falling back to local data.');
-            const localData = await loadLocalData();
+            const localData = await loadLocalData(origin);
             return NextResponse.json({
               data: localData.slice(offset, offset + limit),
               paging: {
@@ -358,15 +408,16 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Error fetching from MercadoLibre:', error);
-    
+
     // Intentar cargar datos locales como fallback
     try {
-      const localData = await loadLocalData();
+      const { origin } = new URL(request.url);
+      const localData = await loadLocalData(origin);
       if (localData.length > 0) {
         const { searchParams } = new URL(request.url);
         const offset = parseInt(searchParams.get('offset') || '0');
         const limit = parseInt(searchParams.get('limit') || '50');
-        
+
         return NextResponse.json({
           data: localData.slice(offset, offset + limit),
           paging: {
@@ -382,7 +433,7 @@ export async function GET(request: Request) {
     } catch (localError) {
       console.error('Error loading local data:', localError);
     }
-    
+
     // Si todo falla, devolver error
     return NextResponse.json(
       {
